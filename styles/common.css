@@ -52,6 +52,14 @@
 		height: 120px;
 		position: relative;
 	}
+	
+	#header_message {
+	  position:absolute;
+	  left:10px;
+	  top: 3px;
+	  color:#F0BABB;
+	  font-size:1.2em;
+	}
 
 	#header_content {
 		color: #f0babb;
