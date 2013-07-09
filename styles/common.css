@@ -68,11 +68,13 @@
 		width: 690px;
 		z-index: 2;
 	}
-	#header_content a {
-		color: #f0babb;
-		text-decoration: none;	
-	}
-	#header_content a:hover { color: white; }
+
+  #header_content a, #header_message a {
+  	color: #f0babb;
+  	text-decoration: none;	
+  }
+
+  #header_content a:hover, #header_message a:hover { color: white; }
 
 	#nav_top {
 		font-size: 1.2em;
