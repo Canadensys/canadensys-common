@@ -11,7 +11,7 @@ ext {
 	jsSourceDir = "src/main/webapp/js"
 	cssSourceDir = "src/main/webapp/styles"
 	additionalWebFilesDir = "${versionedOutputDir}"
-	appVersion = "1.8"
+	appVersion = ""
 }
 
 buildscript {
@@ -150,8 +150,11 @@ task validateVersion()<<{
 }
 
 task useLocalVersionFile()<<{
-	project.ext.versionFile = project.file("config/local/version.properties")
-	project.ext.appVersion = versionFile.getText().replace("version.current=","")
+	project.ext.appVersion = ''
+	if(file("config/local/version.properties").exists()){
+		project.ext.versionFile = project.file("config/local/version.properties")
+		project.ext.appVersion = versionFile.getText().replace("version.current=","")
+	}
 	
 	if(!appVersion){
 		println 'Information:No version provided in local/version.properties.'
@@ -224,6 +227,7 @@ build.dependsOn 'validateVersion','copyProductionConfig','individualJSMinify','u
 copyProductionConfig.mustRunAfter validateVersion
 war.mustRunAfter copyProductionConfig
 war.mustRunAfter useVersionedFiles
+
 task buildProduction(dependsOn: ['build']) << {
 	println 'buildProduction ...'
 }
