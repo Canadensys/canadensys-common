@@ -12,12 +12,16 @@ ext {
 	cssSourceDir = "src/main/webapp/styles"
 	additionalWebFilesDir = "${versionedOutputDir}"
 	appVersion = ""
+	
+	tomcatHttpPort = 9966
+	tomcatStopPort = 8081
+	tomcatStopKey = 'stopKey'
 }
 
 buildscript {
     repositories {	
         mavenCentral()
-	jcenter()
+        jcenter()
     }
 
     dependencies {
@@ -63,19 +67,24 @@ test {
     exclude '**/*IntegrationTest.*'
 }
 
+task integrationTomcatRunWar(type: org.gradle.api.plugins.tomcat.TomcatRunWar) {
+    stopPort = tomcatStopPort
+    stopKey = tomcatStopKey
+    httpPort = tomcatHttpPort
+    contextPath = tomcatContextPath
+    daemon = true
+}
+
+task integrationTomcatStop(type: org.gradle.api.plugins.tomcat.TomcatStop) {
+    stopPort = tomcatStopPort
+    stopKey = tomcatStopKey
+}
+
 task integrationTest(type: Test) {
     include '**/*IntegrationTest.*'
 	
-    doFirst {
-		println 'Starting the embedded tomcat server'
-        tomcatRunWar.daemon = true
-        tomcatRunWar.execute()
-    }
-
-    doLast {
-    	println 'Stopping the embedded tomcat server'
-        tomcatStop.execute()
-    }
+	dependsOn integrationTomcatRunWar
+	finalizedBy integrationTomcatStop
 }
 integrationTest.dependsOn war
 
