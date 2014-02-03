@@ -31,6 +31,17 @@ buildscript {
     }
 }
 
+/**
+* Used for conditional configuration. The configuration is applied only when we know that the task will be executed.
+*/
+def onlyFor(task, config) {
+    gradle.taskGraph.whenReady { graph ->
+        if (graph.hasTask(task)) { 
+            project.configure(project, config)
+        }
+    }
+}
+
 //Configuration files copy tasks
 task copyLocalConfig(type:Copy){
     from "config/local"
