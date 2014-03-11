@@ -41,27 +41,6 @@ task copyProductionConfig(type:Copy){
     into "${buildDir}/config"
 }
 
-//Merge the shared properties with the project's properties
-task concatProperties << {
-	ant.concat(
-		append : "yes",
-		encoding : "UTF-8",
-		outputencoding : "UTF-8",
-		destfile:"${sourceSets.main.output.resourcesDir}/ApplicationResources_en.properties") {
-			fileset(dir:'../canadensys-view-includes/resources/',includes:'messages_en.properties')
-	}
-	
-	ant.concat(
-		append : "yes",
-		encoding : "UTF-8",
-		outputencoding : "UTF-8",
-		destfile:"${sourceSets.main.output.resourcesDir}/ApplicationResources_fr.properties") {
-			fileset(dir:'../canadensys-view-includes/resources/',includes:'messages_fr.properties')
-	}
-}
-//Do concatProperties before WAR
-war.dependsOn concatProperties
-
 test {
     systemProperties 'file.encoding': 'UTF-8'
     exclude '**/*IntegrationTest.*'
