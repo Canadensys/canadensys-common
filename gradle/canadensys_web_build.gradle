@@ -26,7 +26,7 @@ buildscript {
 
     dependencies {
         classpath 'com.eriwen:gradle-js-plugin:1.9.0'
-        classpath 'com.eriwen:gradle-css-plugin:1.8.1'
+        classpath 'com.eriwen:gradle-css-plugin:1.8.3'
         classpath 'org.gradle.api.plugins:gradle-tomcat-plugin:1.0'
     }
 }
