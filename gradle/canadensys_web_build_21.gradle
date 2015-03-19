@@ -44,6 +44,7 @@ task copyProductionConfig(type:Copy){
 test {
     systemProperties 'file.encoding': 'UTF-8'
     exclude '**/*IntegrationTest.*'
+    exclude '**/*FunctionalTest.*'
 }
 
 task integrationTomcatRunWar(type: org.gradle.api.plugins.tomcat.tasks.TomcatRunWar) {
