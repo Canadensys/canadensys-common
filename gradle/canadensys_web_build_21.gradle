@@ -11,7 +11,10 @@ ext {
 	jsSourceDir = "src/main/webapp/js"
 	cssSourceDir = "src/main/webapp/styles"
 	additionalWebFilesDir = "${versionedOutputDir}"
-	appVersion = ""
+  
+	//this could be overwritten by child script
+	versionFile = project.file("config/production/version.properties")
+	appVersion = ''
 	
 	tomcatHttpPort = 9966
 	tomcatStopPort = 8081
@@ -130,24 +133,39 @@ javascript.source.custom.js.files.eachWithIndex { jsFile, idx ->
     }
 }
 
-task validateVersion()<<{
+// Interactive version validation task
+task validateVersion << {
+	Properties props = new Properties()
+  
+	//Read the version from the version file
+	if(versionFile.exists()){
+		versionFile.withInputStream { props.load(it) }
+		appVersion = props.getProperty('version.current')
+  }
+
 	while(!askYesNoQuestion("Is this the correct version name? : ${appVersion}")){
-		def inputReader = System.in.newReader()
-		println "> Enter the correct version name :"
-		project.ext.appVersion = inputReader.readLine()
+    appVersion = System.console().readLine( 'Enter the correct version name : ' )
 	}
-	versionFile.write "version.current=${appVersion}"
+  
+  //Write the value back to the version file
+	if(versionFile.exists()){
+		props.setProperty('version.current', project.ext.appVersion)
+		props.store(versionFile.newWriter(), null)
+  }
 }
 
-task useLocalVersionFile()<<{
-	project.ext.appVersion = ''
-	if(file("config/local/version.properties").exists()){
-		project.ext.versionFile = project.file("config/local/version.properties")
-		project.ext.appVersion = versionFile.getText().replace("version.current=","")
+// Task used to directly used the local version file
+task useLocalVersionFile() << {
+	//project.ext.appVersion = ''
+  versionFile = file('config/local/version.properties');
+	if(versionFile.exists()){
+		Properties props = new Properties()
+		versionFile.withInputStream { props.load(it) }
+		appVersion = props.getProperty('version.current')
 	}
 	
 	if(!appVersion){
-		println 'Information:No version provided in local/version.properties.'
+		println 'Information: No version provided in config/local/version.properties.'
 	}
 }
 
@@ -162,6 +180,7 @@ task addJSVersioning(type:Copy){
 		}
 	}
 }
+
 //if we want to use versioning and minified files, make sure we minify first
 addJSVersioning.mustRunAfter individualJSMinify
 
@@ -191,7 +210,7 @@ useVersionedFiles.mustRunAfter validateVersion
 useVersionedFiles.mustRunAfter useLocalVersionFile
 
 def askYesNoQuestion(question) {
-	println '>'+question + '(y/n)'
+	println question + '(y/n)'
 	def inputReader = System.in.newReader()
 	def answer = inputReader.readLine()
 	while(!answer.equalsIgnoreCase("y") && !answer.equalsIgnoreCase("n")){
