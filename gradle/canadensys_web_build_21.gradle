@@ -120,13 +120,7 @@ javascript.source.custom.js.files.eachWithIndex { jsFile, idx ->
 
 // Interactive version validation task
 task validateVersion << {
-  Properties props = new Properties()
-  
-  //Read the version from the version file
-  if(versionFile.exists()){
-    versionFile.withInputStream { props.load(it) }
-    appVersion = props.getProperty('version.current')
-  }
+  tryLoadVersionFromFile()
   while(!askYesNoQuestion("Is this the correct version name? : ${appVersion}")){
     appVersion = System.console().readLine( 'Enter the correct version name : ' )
   }
@@ -204,6 +198,16 @@ def askYesNoQuestion(question) {
 	return answer.equalsIgnoreCase("y")
 }
 
+// try to get the version from versionFile
+def tryLoadVersionFromFile() {
+  Properties props = new Properties()
+  //Read the version from the version file
+  if(versionFile.exists()){
+    versionFile.withInputStream { props.load(it) }
+    appVersion = props.getProperty('version.current')
+  }
+}
+
 tomcatRunWar.dependsOn 'useLocalVersionFile','copyLocalConfig','individualJSMinify','useVersionedFiles'
 
 //Task to run the web app locally using embedded tomcat
@@ -227,5 +231,6 @@ task buildProduction(dependsOn: ['validateVersion','build']) << {
 
 // this task assumes the file version.properties exists and the version is correct
 task buildProductionQuiet(dependsOn: ['build']) << {
-	println 'buildProduction (quiet mode)...'
+	tryLoadVersionFromFile()
+	println 'buildProduction (quiet mode) Version:' + appVersion
 }
