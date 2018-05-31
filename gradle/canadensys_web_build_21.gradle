@@ -221,7 +221,7 @@ copyProductionConfig.mustRunAfter validateVersion
 war.mustRunAfter copyProductionConfig
 war.mustRunAfter useVersionedFiles
 
-task buildProduction(dependsOn: [validateVersion','build']) << {
+task buildProduction(dependsOn: ['validateVersion','build']) << {
 	println 'buildProduction ...'
 }
 
