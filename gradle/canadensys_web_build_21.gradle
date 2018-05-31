@@ -95,21 +95,6 @@ css.source {
 //Call dynamically created tasks (for each JavaScript file)
 task individualJSMinify(dependsOn: tasks.matching { Task task -> task.name.startsWith("dominify")})
 
-//--not used yet--
-//Combine CSS
-//task combineMyCss(type: com.eriwen.gradle.css.tasks.CombineCssTask) {
-//    source = css.source.custom.css.files
-//    dest = "${buildDir}/explorer-style.css"
-//}
-// Minify CSS
-//task minifyMyCss(type: com.eriwen.gradle.css.tasks.MinifyCssTask) {
-//    source = combineMyCss
-//    dest = file("${minifyOutputDir}/explorer-style.min.css")
-//    yuicompressor {
-//        lineBreakPos = -1
-//    }
-//}
-
 //Dynamically create a task for each JavaScript files
 javascript.source.custom.js.files.eachWithIndex { jsFile, idx ->
     tasks.create(name: "dominify${idx}", type: com.eriwen.gradle.js.tasks.MinifyJsTask) {
@@ -135,22 +120,21 @@ javascript.source.custom.js.files.eachWithIndex { jsFile, idx ->
 
 // Interactive version validation task
 task validateVersion << {
-	Properties props = new Properties()
+  Properties props = new Properties()
   
-	//Read the version from the version file
-	if(versionFile.exists()){
-		versionFile.withInputStream { props.load(it) }
-		appVersion = props.getProperty('version.current')
+  //Read the version from the version file
+  if(versionFile.exists()){
+    versionFile.withInputStream { props.load(it) }
+    appVersion = props.getProperty('version.current')
   }
-
-	while(!askYesNoQuestion("Is this the correct version name? : ${appVersion}")){
+  while(!askYesNoQuestion("Is this the correct version name? : ${appVersion}")){
     appVersion = System.console().readLine( 'Enter the correct version name : ' )
-	}
+  }
   
   //Write the value back to the version file
-	if(versionFile.exists()){
-		props.setProperty('version.current', project.ext.appVersion)
-		props.store(versionFile.newWriter(), null)
+  if(versionFile.exists()){
+    props.setProperty('version.current', project.ext.appVersion)
+    props.store(versionFile.newWriter(), null)
   }
 }
 
@@ -232,11 +216,16 @@ task runIntegrationTest(dependsOn: ['copyLocalConfig','integrationTest']) << {
 	println 'runIntegrationTest ...'
 }
 
-build.dependsOn 'validateVersion','copyProductionConfig','individualJSMinify','useVersionedFiles'
+build.dependsOn 'copyProductionConfig','individualJSMinify','useVersionedFiles'
 copyProductionConfig.mustRunAfter validateVersion
 war.mustRunAfter copyProductionConfig
 war.mustRunAfter useVersionedFiles
 
-task buildProduction(dependsOn: ['build']) << {
+task buildProduction(dependsOn: [validateVersion','build']) << {
 	println 'buildProduction ...'
+}
+
+// this task assumes the file version.properties exists and the version is correct
+task buildProductionQuiet(dependsOn: ['build']) << {
+	println 'buildProduction (quiet mode)...'
 }
