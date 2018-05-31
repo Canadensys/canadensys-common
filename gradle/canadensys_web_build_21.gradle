@@ -119,8 +119,7 @@ javascript.source.custom.js.files.eachWithIndex { jsFile, idx ->
 }
 
 // Interactive version validation task
-task validateVersion << {
-  tryLoadVersionFromFile()
+task validateVersion(dependsOn: 'tryLoadVersionFromFile') << {
   while(!askYesNoQuestion("Is this the correct version name? : ${appVersion}")){
     appVersion = System.console().readLine( 'Enter the correct version name : ' )
   }
@@ -199,7 +198,7 @@ def askYesNoQuestion(question) {
 }
 
 // try to get the version from versionFile
-def tryLoadVersionFromFile() {
+task tryLoadVersionFromFile() << {
   Properties props = new Properties()
   //Read the version from the version file
   if(versionFile.exists()){
@@ -221,6 +220,7 @@ task runIntegrationTest(dependsOn: ['copyLocalConfig','integrationTest']) << {
 }
 
 build.dependsOn 'copyProductionConfig','individualJSMinify','useVersionedFiles'
+copyProductionConfig.mustRunAfter tryLoadVersionFromFile
 copyProductionConfig.mustRunAfter validateVersion
 war.mustRunAfter copyProductionConfig
 war.mustRunAfter useVersionedFiles
@@ -230,7 +230,6 @@ task buildProduction(dependsOn: ['validateVersion','build']) << {
 }
 
 // this task assumes the file version.properties exists and the version is correct
-task buildProductionQuiet(dependsOn: ['build']) << {
-	tryLoadVersionFromFile()
+task buildProductionQuiet(dependsOn: ['tryLoadVersionFromFile', 'build']) << {
 	println 'buildProduction (quiet mode) Version:' + appVersion
 }
