@@ -22,9 +22,9 @@ ext {
 }
 
 buildscript {
-    repositories {	
-        mavenCentral()
+    repositories {
         jcenter()
+        mavenCentral()
     }
 
     dependencies {
