@@ -23,8 +23,9 @@ ext {
 
 buildscript {
     repositories {
-        jcenter()
+        maven {url 'https://repo.gradle.org/gradle/plugins-releases'}
         mavenCentral()
+        jcenter()
     }
 
     dependencies {
