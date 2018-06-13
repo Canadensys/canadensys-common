@@ -23,14 +23,13 @@ ext {
 
 buildscript {
     repositories {
-        maven {url 'https://repo.gradle.org/gradle/plugins-releases'}
         mavenCentral()
         jcenter()
     }
 
     dependencies {
         classpath 'com.eriwen:gradle-js-plugin:1.12.1'
-        classpath 'com.eriwen:gradle-css-plugin:1.11.1'
+        classpath 'com.eriwen:gradle-css-plugin:2.12.0'
         classpath 'org.gradle.api.plugins:gradle-tomcat-plugin:1.2.4'
     }
 }
