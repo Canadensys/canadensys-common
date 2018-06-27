@@ -23,9 +23,9 @@ ext {
 
 buildscript {
     repositories {
-        // switch back to mavenCentral() when on Java 8
+        // switch back to mavenCentral() and jcenter() when on Java 8
 	maven { url "http://repo.maven.apache.org/maven2" }
-        jcenter()
+	maven { url "http://jcenter.bintray.com" }
     }
 
     dependencies {
