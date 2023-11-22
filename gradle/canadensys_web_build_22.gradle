@@ -1,0 +1,237 @@
+apply plugin: com.eriwen.gradle.js.JsPlugin
+apply plugin: com.eriwen.gradle.css.CssPlugin
+apply plugin: org.gradle.api.plugins.tomcat.TomcatPlugin
+
+//Local variables
+def versionedOutputDir = "${buildDir}/versioned-files"
+def minifyOutputDir = "${buildDir}/minified-files"
+
+//Shared variables
+ext {
+	jsSourceDir = "src/main/webapp/js"
+	cssSourceDir = "src/main/webapp/styles"
+	additionalWebFilesDir = "${versionedOutputDir}"
+  
+	//this could be overwritten by child script
+	versionFile = project.file("config/production/version.properties")
+	appVersion = ''
+	
+	tomcatHttpPort = 9966
+	tomcatStopPort = 8081
+	tomcatStopKey = 'stopKey'
+}
+
+buildscript {
+    repositories {
+        // switch back to mavenCentral() and jcenter() when on Java 8
+	maven { url "https://repo.maven.apache.org/maven2" }
+	maven { url "https://jcenter.bintray.com" }
+    }
+
+    dependencies {
+        classpath 'com.eriwen:gradle-js-plugin:1.12.1'
+        classpath 'com.eriwen:gradle-css-plugin:2.12.0'
+        classpath 'org.gradle.api.plugins:gradle-tomcat-plugin:1.2.4'
+	classpath 'org.scaldingspoon.gradle:gradle-waroverlay-plugin:0.9.3'
+    }
+}
+
+//Configuration files copy tasks
+task copyLocalConfig(type:Copy){
+    from "config/local"
+    into "${buildDir}/config"
+}
+task copyProductionConfig(type:Copy){
+    from "config/production"
+    into "${buildDir}/config"
+}
+
+test {
+    systemProperties 'file.encoding': 'UTF-8'
+    exclude '**/*IntegrationTest.*'
+    exclude '**/*FunctionalTest.*'
+}
+
+task integrationTomcatRunWar(type: org.gradle.api.plugins.tomcat.tasks.TomcatRunWar) {
+    stopPort = tomcatStopPort
+    stopKey = tomcatStopKey
+    httpPort = tomcatHttpPort
+    contextPath = tomcatContextPath
+    daemon = true
+}
+
+task integrationTomcatStop(type: org.gradle.api.plugins.tomcat.tasks.TomcatStop) {
+    stopPort = tomcatStopPort
+    stopKey = tomcatStopKey
+}
+
+task integrationTest(type: Test) {
+    include '**/*IntegrationTest.*'
+	
+	dependsOn integrationTomcatRunWar
+	finalizedBy integrationTomcatStop
+}
+integrationTest.dependsOn war
+
+//JavaScript and CSS Sources
+javascript.source {
+	custom {
+		 js {
+		     srcDir jsSourceDir
+		     include "**/*.js"
+		     exclude "*.min.js"
+		     exclude "lib/"
+		 }
+	 }
+}
+css.source {
+    custom {
+        css {
+            srcDir cssSourceDir
+            include "*.css"
+            exclude "*.min.css"
+        }
+    }
+}
+
+//Call dynamically created tasks (for each JavaScript file)
+task individualJSMinify(dependsOn: tasks.matching { Task task -> task.name.startsWith("dominify")})
+
+//Dynamically create a task for each JavaScript files
+javascript.source.custom.js.files.eachWithIndex { jsFile, idx ->
+    tasks.create(name: "dominify${idx}", type: com.eriwen.gradle.js.tasks.MinifyJsTask) {
+    	if(jsFile.getParentFile().getName() != "js"){
+    		source = jsFile
+	        dest = "${minifyOutputDir}/"+jsFile.getParentFile().getName() +"/${jsFile.name}".replaceFirst("\\.js",".min.js")
+	    	closure {
+	        	//warningLevel = 'VERBOSE'
+	        	compilationLevel = 'SIMPLE_OPTIMIZATIONS'
+	    	}
+    	}
+    	else{
+    		source = jsFile
+	        dest = "${minifyOutputDir}/${jsFile.name}".replaceFirst("\\.js",".min.js")
+	    	//outputs.dir "${buildDir}"
+	    	closure {
+	        	//warningLevel = 'VERBOSE'
+	        	compilationLevel = 'SIMPLE_OPTIMIZATIONS'
+	    	}
+    	}
+    }
+}
+
+// Interactive version validation task
+task validateVersion(dependsOn: 'tryLoadVersionFromFile') << {
+  while(!askYesNoQuestion("Is this the correct version name? : ${appVersion}")){
+    appVersion = System.console().readLine( 'Enter the correct version name : ' )
+  }
+  
+  //Write the value back to the version file
+  if(versionFile.exists()){
+    props.setProperty('version.current', project.ext.appVersion)
+    props.store(versionFile.newWriter(), null)
+  }
+}
+
+// Task used to directly used the local version file
+task useLocalVersionFile() << {
+	//project.ext.appVersion = ''
+  versionFile = file('config/local/version.properties');
+	if(versionFile.exists()){
+		Properties props = new Properties()
+		versionFile.withInputStream { props.load(it) }
+		appVersion = props.getProperty('version.current')
+	}
+	
+	if(!appVersion){
+		println 'Information: No version provided in config/local/version.properties.'
+	}
+}
+
+//add versioning to JavaScript files
+task addJSVersioning(type:Copy){
+	from minifyOutputDir
+	into "${versionedOutputDir}/js"
+	
+	rename { String fileName ->
+		if(appVersion){
+			fileName.replaceFirst("\\.min\\.js","-${appVersion}.min.js")
+		}
+	}
+}
+
+//if we want to use versioning and minified files, make sure we minify first
+addJSVersioning.mustRunAfter individualJSMinify
+
+//add versioning to CSS files
+task addCSSVersioning(type:Copy){
+	from css.source.custom.css.files
+	into "${versionedOutputDir}/css"
+	
+	rename { String fileName ->
+		if(appVersion){
+			fileName.replaceFirst("\\.css","-${appVersion}.css")
+		}
+	}
+}
+
+task useVersionedFiles (dependsOn:[addJSVersioning,addCSSVersioning]) << {
+	//from "${versionedOutputDir}"
+	//into minifyOutputDir
+	
+	//doLast{
+	//	project.file("${minifyOutputDir}/versioned")deleteDir();
+	//}
+}
+//if we want to use versioning, make sure we asked for it first
+useVersionedFiles.mustRunAfter validateVersion
+//or, use the local file if this task is set
+useVersionedFiles.mustRunAfter useLocalVersionFile
+
+def askYesNoQuestion(question) {
+	println question + '(y/n)'
+	def inputReader = System.in.newReader()
+	def answer = inputReader.readLine()
+	while(!answer.equalsIgnoreCase("y") && !answer.equalsIgnoreCase("n")){
+		println '>'+question + '(y/n)'
+		answer = inputReader.readLine()
+	}
+	return answer.equalsIgnoreCase("y")
+}
+
+// try to get the version from versionFile
+task tryLoadVersionFromFile() << {
+  Properties props = new Properties()
+  //Read the version from the version file
+  if(versionFile.exists()){
+    versionFile.withInputStream { props.load(it) }
+    appVersion = props.getProperty('version.current')
+  }
+}
+
+tomcatRunWar.dependsOn 'useLocalVersionFile','copyLocalConfig','individualJSMinify','useVersionedFiles'
+
+//Task to run the web app locally using embedded tomcat
+task runLocal(dependsOn: 'tomcatRunWar') << {
+	println 'runLocal ...'
+}
+
+war.mustRunAfter copyLocalConfig
+task runIntegrationTest(dependsOn: ['copyLocalConfig','integrationTest']) << {
+	println 'runIntegrationTest ...'
+}
+
+build.dependsOn 'copyProductionConfig','individualJSMinify','useVersionedFiles'
+copyProductionConfig.mustRunAfter tryLoadVersionFromFile
+copyProductionConfig.mustRunAfter validateVersion
+war.mustRunAfter copyProductionConfig
+war.mustRunAfter useVersionedFiles
+
+task buildProduction(dependsOn: ['validateVersion','build']) << {
+	println 'buildProduction ...'
+}
+
+// this task assumes the file version.properties exists and the version is correct
+task buildProductionQuiet(dependsOn: ['tryLoadVersionFromFile', 'build']) << {
+	println 'buildProduction (quiet mode) Version:' + appVersion
+}
